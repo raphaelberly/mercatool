@@ -1,0 +1,20 @@
+
+{
+  "Clean Sheet (cf règlement)": "clean_sheet",
+  "Passe décisive": "decisive_passes",
+  "But": "goals",
+  "But sur coup franc": "free_kicks_scored",
+  "But sur pénalty": "penalties_scored",
+  "Carton rouge": "red_cards",
+  "Grosse erreur qui amène un but": "mistakes_leading_to_goal",
+  "Pénalty manqué": "penalties_not_on_target",
+  "Pénalty manqué cadré": "penalties_stopped_by_goalkeeper",
+  "Pénalty manqué sur le poteau": "penalties_stopped_by_post",
+  "But contre son camp": "own_goals",
+  "Pénalty concédé": "penalties_caused",
+  "Pénalty gagné": "penalties_obtained",
+  "Pourcentage de passes réussies": "perc_successful_passes",
+  "Arrêt d'un tir de l'intérieur de la surface": "stops_in_penalty_area",
+  "Arrêt d'un tir de l'extérieur de la surface": "stops_out_penalty_area",
+  "Total": "raw_grade"
+}
