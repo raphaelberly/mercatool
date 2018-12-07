@@ -21,6 +21,8 @@ def run_driver():
         sleep(6)  # TRY AND WAIT HERE INSTEAD OF WAIT
         chrome_options = Options()
         chrome_options.add_argument('--window-size=300,800')
+        chrome_options.add_argument('--lang=en')
+        chrome_options.add_experimental_option('prefs', {'intl.accept_languages': 'en'})
         yield webdriver.Remote('http://127.0.0.1:4444/wd/hub', DesiredCapabilities.CHROME,
                                options=chrome_options)
 
