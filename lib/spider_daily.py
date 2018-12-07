@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
-
-import sys
+import configparser
 from warnings import warn
 from json import loads
 from random import randint
@@ -14,15 +13,15 @@ from bs4 import BeautifulSoup
 from selenium.webdriver.common.action_chains import ActionChains
 from sqlalchemy import create_engine
 
-from spider import Spider
 from tools import fraction_to_float
 
 
-class SpiderDaily(Spider):
+class SpiderDaily(object):
 
-    def __init__(self, day, config_directory, scrape_players_list=True):
-        # Initialise Spider attributes
-        Spider.__init__(self, config_directory)
+    def __init__(self, day, driver, config_directory, scrape_players_list=True):
+        # Set the config attributes
+        self.config = configparser.ConfigParser()
+        self.config.read(config_directory + '/credentials.ini')
         # Set the day attribute
         self.day = day
         self.classes = loads(open(config_directory + '/classes.json').read())
@@ -31,6 +30,12 @@ class SpiderDaily(Spider):
         self.urls_to_scrape = []
         self.players = []
         self.players_list = [] if scrape_players_list else None
+        self.driver = driver
+
+    # GET A WEBPAGE
+    def get_page(self, url):
+        self.driver.get(url)
+        sleep(randint(2, 3))
 
     # GET PARAMS OF THE BEAUTIFUL SOUP FIND(ALL) FUNCTIONS
     def get_find_params(self, class_name, team=None):
@@ -172,16 +177,16 @@ class SpiderDaily(Spider):
         df_players.clean_sheet = df_players.clean_sheet.astype(str).apply(fraction_to_float).astype(float)
         self._apply_exceptions(df_players)
         if self.players_list is None:
-            df_players_list = pd.read_csv('../data/players_{:02d}.csv'.format(self.day))
+            df_players_list = pd.read_csv('data/players_{:02d}.csv'.format(self.day))
             self._apply_exceptions(df_players_list)
         else:
             df_players_list = pd.DataFrame(self.players_list, columns=['day', 'player', 'position', 'team', 'rating'])
             self._apply_exceptions(df_players_list)
-            df_players_list.to_csv('../data/players_{:02d}.csv'.format(self.day), index=False)
+            df_players_list.to_csv('data/players_{:02d}.csv'.format(self.day), index=False)
         # Merge scores and goals data together
         df_output = pd.merge(df_players_list, df_players, on=['day', 'team', 'player'], how='left')
         # Export data as a CSV
-        df_output.to_csv('../data/day_{:02d}.csv'.format(self.day), index=False)
+        df_output.to_csv('data/day_{:02d}.csv'.format(self.day), index=False)
         # Upload to the database
         self.to_db(df_output)
 
@@ -200,38 +205,13 @@ class SpiderDaily(Spider):
 
     # SCRAPE THE CHOSEN DAY
     def scrape(self):
-        # Start driver
-        self.start_driver()
-        # Log in
-        self.login()
         # Get the list of URLs
-        try: self.parse_games_url()
-        except:
-            self.close_driver()
-            sys.exit('Could not load list of URLs to scrape')
+        self.parse_games_url()
         # Get the games details
         for game_url in self.urls_to_scrape:
-            try:
-                self.parse_game_details(game_url)
-            except:
-                self.close_driver()
-                sys.exit('Could not parse details from game {}'.format(game_url))
+            self.parse_game_details(game_url)
         # Get players list
         if self.players_list is not None:
-            try: self.parse_players_list()
-            except:
-                self.close_driver()
-                sys.exit('Could not parse players list')
+            self.parse_players_list()
         else:
             print('Players list not scraped, local data will be used...')
-        # Close driver
-        self.close_driver()
-
-
-if __name__ == '__main__':
-
-    for day in [15]:
-        print('\nSCRAPING DAY {}'.format(day))
-        spider = SpiderDaily(day, '../config', scrape_players_list=True)
-        spider.scrape()
-        spider.export()
