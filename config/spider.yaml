@@ -1,0 +1,76 @@
+urls:
+  login: https://www.monpetitgazon.com/?modal=login
+  calendar: https://www.monpetitgazon.com/championships/1/calendar?day={}
+  mercato: https://www.monpetitgazon.com/quotation/1
+  root: https://www.monpetitgazon.com
+
+features:
+  Clean sheet (cf rules): clean_sheet
+  Goal assist: decisive_passes
+  Goal: goals
+  Goal from free kick: free_kicks_scored
+  Goal from penalty: penalties_scored
+  Red card: red_cards
+  A mistake which leads to an opposition goal: mistakes_leading_to_goal
+  Penalty missed: penalties_not_on_target
+  Penalty on target saved: penalties_stopped_by_goalkeeper
+  Penalty missed on post/bar: penalties_stopped_by_post
+  Own goal: own_goals
+  Penalty conceded: penalties_caused
+  Penalty won: penalties_obtained
+  Successful pass percentage: perc_successful_passes
+  Shot saved inside the box: stops_in_penalty_area
+  Shot saved outside the box: stops_out_penalty_area
+  Total: raw_grade
+
+classes:
+  team_name:
+    home_team:
+      key: index__homeTeamClubName___21dga
+      tag: div
+    away_team:
+      key: index__awayTeamClubName___2U5C2
+      tag: div
+  stadium:
+    key: index__pitchVertical___1svKR
+    tag: div
+  team_players:
+    home_team:
+      key: index__pitchHome___1qSWd
+      tag: div
+    away_team:
+      key: index__pitchAway___2sAoj
+      tag: div
+  player:
+    key: graphic-overlay
+    tag: span
+  player_grade:
+    key: rate
+    tag: span
+  games:
+    key: index__match___2as0X
+    tag: div
+  game_score:
+    key: index__root___12BYS
+    tag: a
+  stats_table:
+    key: index__tablestat___3duSS
+    tag: table
+  player_line:
+    key: index__line___2A045
+    tag: tr
+  player_name:
+    key: index__overflow___1ORHV
+    tag: span
+  player_first_name:
+    key: index__firstNameLabel___3edaR
+    tag: span
+  player_position:
+    key: index__playerPositionMobile___36UKg
+    tag: span
+  player_team:
+    key: index__hiddenSm___o9WAX
+    tag: span
+  player_rating:
+    key: index__quotation___3KVXQ
+    tag: td

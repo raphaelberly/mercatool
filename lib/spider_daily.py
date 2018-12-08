@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
-import configparser
 from warnings import warn
-from json import loads
 from random import randint
 from sys import stdout
 from time import sleep
@@ -13,19 +11,17 @@ from bs4 import BeautifulSoup
 from selenium.webdriver.common.action_chains import ActionChains
 from sqlalchemy import create_engine
 
-from tools import fraction_to_float
+from .tools import fraction_to_float
 
 
 class SpiderDaily(object):
 
-    def __init__(self, day, driver, config_directory, scrape_players_list=True):
-        # Set the config attributes
-        self.config = configparser.ConfigParser()
-        self.config.read(config_directory + '/credentials.ini')
-        # Set the day attribute
+    def __init__(self, day, driver, credentials, urls, classes, features, scrape_players_list=True):
         self.day = day
-        self.classes = loads(open(config_directory + '/classes.json').read())
-        self.features = loads(open(config_directory + '/features.json').read())
+        self.credentials = credentials
+        self.urls = urls
+        self.classes = classes
+        self.features = features
         # Instantiate urls_to_scrape_list
         self.urls_to_scrape = []
         self.players = []
@@ -50,12 +46,12 @@ class SpiderDaily(object):
     def login(self):
         print('Logging in...')
         # Get the login page
-        self.driver.get(self.config.get('MPG', 'url_login'))
+        self.driver.get(self.urls['login'])
         # Submit the credentials
         username = self.driver.find_element_by_name("email")
         password = self.driver.find_element_by_name("password")
-        username.send_keys(self.config.get('MPG', 'username'))
-        password.send_keys(self.config.get('MPG', 'password'))
+        password.send_keys(self.credentials['mpg']['password'])
+        username.send_keys(self.credentials['mpg']['username'])
         password.submit()
         # Sleep
         sleep(randint(3, 5))
@@ -64,7 +60,7 @@ class SpiderDaily(object):
     def parse_games_url(self):
         print('Getting list of URLs to scrape...')
         # Get the day page
-        self.get_page(self.config.get('MPG', 'url_calendar').format(self.day))
+        self.get_page(self.urls['calendar'].format(self.day))
         # Parse the day page's code
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
         games = soup.findAll(**self.get_find_params('games'))
@@ -84,7 +80,7 @@ class SpiderDaily(object):
     # PARSE GAME DETAILS
     def parse_game_details(self, url):
         print('Getting details from game {}'.format(url))
-        url_root = self.config.get('MPG', 'url_root')
+        url_root = self.urls['root']
         self.get_page(url_root + url)
         # Parse overall code
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
@@ -146,7 +142,7 @@ class SpiderDaily(object):
     # PARSE GAME DETAILS
     def parse_players_list(self):
         print('Getting players list...')
-        self.get_page(self.config.get('MPG', 'url_mercato'))
+        self.get_page(self.urls['mercato'])
         # Parse overall code
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
         # Get all lines (one per player)
@@ -192,16 +188,13 @@ class SpiderDaily(object):
 
     # LOAD A DATAFRAME INTO A DATABASE
     def to_db(self, df):
-        engine_string = 'postgresql+psycopg2://{0}:{1}@{2}:{3}/{4}'.format(
-            self.config.get('PIDB', 'user'),
-            self.config.get('PIDB', 'password'),
-            self.config.get('PIDB', 'host'),
-            self.config.get('PIDB', 'port'),
-            self.config.get('PIDB', 'db')
-        )
+        return self._df_to_db(df, **self.credentials['db'])
+
+    @staticmethod
+    def _df_to_db(df, host, port, db, user, password, schema, table):
+        engine_string = f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}'
         engine = create_engine(engine_string)
-        df.to_sql(self.config.get('SQL', 'table'), con=engine, schema=self.config.get('SQL', 'schema'),
-                  if_exists='append', index=False)
+        df.to_sql(table, con=engine, schema=schema, if_exists='append', index=False)
 
     # SCRAPE THE CHOSEN DAY
     def scrape(self):
