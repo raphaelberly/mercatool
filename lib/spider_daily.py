@@ -34,13 +34,11 @@ class SpiderDaily(object):
         sleep(randint(2, 3))
 
     # GET PARAMS OF THE BEAUTIFUL SOUP FIND(ALL) FUNCTIONS
-    def get_find_params(self, class_name, team=None):
-        if team:
-            return {'name': self.classes[class_name][team]['tag'],
-                    'attrs': {'class': self.classes[class_name][team]['key']}}
-        else:
-            return {'name': self.classes[class_name]['tag'],
-                    'attrs': {'class': self.classes[class_name]['key']}}
+    def get_find_args(self, class_name):
+        return {
+            'name': self.classes[class_name]['tag'],
+            'attrs': {'class': self.classes[class_name]['key']}
+        }
 
     # LOG IN TO THE WEBSITE
     def login(self):
@@ -63,10 +61,10 @@ class SpiderDaily(object):
         self.get_page(self.urls['calendar'].format(self.day))
         # Parse the day page's code
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        games = soup.findAll(**self.get_find_params('games'))
+        games = soup.findAll(**self.get_find_args('games'))
         # Fill the urls_to_scrape list
         for game in games:
-            game_score = game.find(**self.get_find_params('game_score'))
+            game_score = game.find(**self.get_find_args('game_score'))
             game_url = game_score['href'] if game_score else None
             # Check that it could find a URL
             if game_url:
@@ -87,7 +85,7 @@ class SpiderDaily(object):
         # Repeat process for home and away team
         for loc in ['home', 'away']:
             # Get team name
-            team_name = soup.find(**self.get_find_params(f'{loc}_team_name')).text
+            team_name = soup.find(**self.get_find_args(f'{loc}_team_name')).text
             # Get the team players
             stadium = self.driver.find_element_by_class_name(self.classes['stadium']['key'])
             players = stadium \
@@ -95,7 +93,7 @@ class SpiderDaily(object):
                 .find_elements_by_class_name(self.classes['player']['key'])
             # Get the team opponents
             opponent_loc = 'home' if loc == 'away' else 'away'
-            opponent_name = soup.find(**self.get_find_params(f'{opponent_loc}_team_name')).text
+            opponent_name = soup.find(**self.get_find_args(f'{opponent_loc}_team_name')).text
 
             # Iterate over all players of the team
             i, n = 0, len(players)
@@ -127,7 +125,7 @@ class SpiderDaily(object):
     def parse_player_table(self):
         # Parse the day page's code
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        table = soup.find(**self.get_find_params('stats_table'))
+        table = soup.find(**self.get_find_args('stats_table'))
         lines = table.findAll('tr')
         data = {'player': lines[2].text.split(" - ")[0], 'day': self.day, 'played': 1}
         for line in lines[2:]:
@@ -147,14 +145,14 @@ class SpiderDaily(object):
         # Parse overall code
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
         # Get all lines (one per player)
-        lines = soup.findAll(**self.get_find_params('player_line'))
+        lines = soup.findAll(**self.get_find_args('player_line'))
         # Parse all lines
         to_extract = ['player_name', 'player_position', 'player_team', 'player_rating']
         for line in lines:
             # Remove player first name
-            _ = line.find(**self.get_find_params('player_first_name')).extract()
+            _ = line.find(**self.get_find_args('player_first_name')).extract()
             # Collect features to extract
-            self.players_list.append(tuple([self.day]+[line.find(**self.get_find_params(x)).text.replace('\xa0', '') for x in to_extract]))
+            self.players_list.append(tuple([self.day] + [line.find(**self.get_find_args(x)).text.replace('\xa0', '') for x in to_extract]))
 
     # APPLY EXCEPTIONS
     @staticmethod
