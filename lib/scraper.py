@@ -14,7 +14,7 @@ from sqlalchemy import create_engine
 from .tools import fraction_to_float
 
 
-class SpiderDaily(object):
+class Scraper(object):
 
     def __init__(self, day, driver, credentials, urls, classes, features, scrape_players_list=True):
         self.day = day

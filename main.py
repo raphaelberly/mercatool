@@ -3,7 +3,7 @@ import argparse
 import yaml
 
 from lib.driver import run_driver
-from lib.spider_daily import SpiderDaily
+from lib.scraper import Scraper
 
 
 if __name__ == '__main__':
@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     # Instantiate the spider
     with run_driver(**conf_driver) as driver:
-        spider = SpiderDaily(args.day, driver, credentials, **conf_spider)
+        spider = Scraper(args.day, driver, credentials, **conf_spider)
         spider.login()
         spider.scrape()
         spider.export()
