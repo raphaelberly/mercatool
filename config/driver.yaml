@@ -1,6 +1,4 @@
 docker_image: standalone-chrome:3.14.0
 
 driver_lang: en
-driver_size:
-  - 300
-  - 800
+driver_size: "--window-size=300,800"

@@ -1,14 +1,41 @@
 from contextlib import contextmanager
-from time import sleep
+from time import sleep, time
 
 import docker
 from selenium import webdriver
 from selenium.webdriver import DesiredCapabilities
 from selenium.webdriver.chrome.options import Options
+from urllib3.exceptions import ProtocolError
+
+SLEEPING_TIME = 1
+
+
+def _get_options(lang, *args):
+
+    chrome_options = Options()
+    chrome_options.add_argument(f'--lang={lang}')
+    chrome_options.add_experimental_option('prefs', {'intl.accept_languages': lang})
+    for arg in args:
+        chrome_options.add_argument(arg)
+    return chrome_options
+
+
+def _get_driver(options, timeout=10):
+    limit = time() + timeout
+    while time() < limit:
+        try:
+            driver = webdriver.Remote('http://localhost:4444/wd/hub', DesiredCapabilities.CHROME,
+                                      options=options)
+        except ProtocolError:
+            sleep(SLEEPING_TIME)
+        else:
+            return driver
+    else:
+        raise TimeoutError('Waiting for container to be ready for webdriver creation timed out')
 
 
 @contextmanager
-def run_driver(docker_image, driver_lang='en', driver_size=None):
+def run_driver(docker_image, driver_lang='en', **kwargs):
 
     print('Starting docker container...')
     client = docker.from_env()
@@ -16,14 +43,9 @@ def run_driver(docker_image, driver_lang='en', driver_size=None):
 
     try:
         print('Starting driver...')
-        sleep(12)  # TODO: REPLACE THIS WITH: WHILE... TRY...
-        chrome_options = Options()
-        chrome_options.add_argument(f'--lang={driver_lang}')
-        chrome_options.add_experimental_option('prefs', {'intl.accept_languages': driver_lang})
-        if driver_size:
-            chrome_options.add_argument('--window-size={0},{1}'.format(*driver_size))
-        yield webdriver.Remote('http://localhost:4444/wd/hub', DesiredCapabilities.CHROME,
-                               options=chrome_options)
+        options = _get_options(driver_lang, *kwargs.values())
+        driver = _get_driver(options)
+        yield driver
 
     finally:
         print('Stopping driver and docker container...')
