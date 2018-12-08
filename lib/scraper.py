@@ -16,8 +16,9 @@ from .tools import fraction_to_float
 
 class Scraper(object):
 
-    def __init__(self, day, driver, credentials, urls, classes, features, scrape_players_list=True):
+    def __init__(self, day, season, driver, credentials, urls, classes, features, scrape_players_list=True):
         self.day = day
+        self.season = season
         self.credentials = credentials
         self.urls = urls
         self.classes = classes
@@ -152,7 +153,7 @@ class Scraper(object):
             # Remove player first name
             _ = line.find(**self.get_find_args('player_first_name')).extract()
             # Collect features to extract
-            self.players_list.append(tuple([self.day] + [line.find(**self.get_find_args(x)).text.replace('\xa0', '') for x in to_extract]))
+            self.players_list.append(tuple([self.day, self.season] + [line.find(**self.get_find_args(x)).text.replace('\xa0', '') for x in to_extract]))
 
     # APPLY EXCEPTIONS
     @staticmethod
@@ -175,7 +176,7 @@ class Scraper(object):
             df_players_list = pd.read_csv('data/players_{:02d}.csv'.format(self.day))
             self._apply_exceptions(df_players_list)
         else:
-            df_players_list = pd.DataFrame(self.players_list, columns=['day', 'player', 'position', 'team', 'rating'])
+            df_players_list = pd.DataFrame(self.players_list, columns=['day', 'season', 'player', 'position', 'team', 'rating'])
             self._apply_exceptions(df_players_list)
             df_players_list.to_csv('data/players_{:02d}.csv'.format(self.day), index=False)
         # Merge scores and goals data together

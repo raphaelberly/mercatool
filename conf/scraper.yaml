@@ -1,3 +1,5 @@
+season: 2018-2019
+
 urls:
   login: https://www.monpetitgazon.com/?modal=login
   calendar: https://www.monpetitgazon.com/championships/1/calendar?day={}
