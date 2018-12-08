@@ -85,20 +85,22 @@ class SpiderDaily(object):
         # Parse overall code
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
         # Repeat process for home and away team
-        for team_studied in ['home_team', 'away_team']:
-            # Get team name, find the virtual stadium on the page and the players
-            team_name = soup.find(**self.get_find_params('team_name', team_studied)).text
-            opponent_team = 'home_team' if team_studied == 'away_team' else 'away_team'
-            opponent_name = soup.find(**self.get_find_params('team_name', opponent_team)).text
+        for loc in ['home', 'away']:
+            # Get team name
+            team_name = soup.find(**self.get_find_params(f'{loc}_team_name')).text
+            # Get the team players
             stadium = self.driver.find_element_by_class_name(self.classes['stadium']['key'])
             players = stadium \
-                .find_element_by_class_name(self.classes['team_players'][team_studied]['key']) \
+                .find_element_by_class_name(self.classes[f'{loc}_team_players']['key']) \
                 .find_elements_by_class_name(self.classes['player']['key'])
+            # Get the team opponents
+            opponent_loc = 'home' if loc == 'away' else 'away'
+            opponent_name = soup.find(**self.get_find_params(f'{opponent_loc}_team_name')).text
 
             # Iterate over all players of the team
-            i, n = 1, len(players)
+            i, n = 0, len(players)
             for player in players:
-
+                i += 1
                 player_grade = None
                 try:
                     player_grade = player \
@@ -108,7 +110,7 @@ class SpiderDaily(object):
                     pass
 
                 if player_grade:
-                    stdout.write('\rParsing {0}: {1}/{2} players parsed'.format(team_studied, i, n))
+                    stdout.write(f'\rParsing {loc}: {i}/{n} players parsed')
                     # Move to element and click on it
                     actions = ActionChains(self.driver)
                     self.driver.execute_script("arguments[0].scrollIntoView();", player)
@@ -118,7 +120,6 @@ class SpiderDaily(object):
                     data = self.parse_player_table()
                     data.update({'team': team_name, 'grade': player_grade, 'opponent': opponent_name})
                     self.players.append(data)
-                    i += 1
 
             print("")
 

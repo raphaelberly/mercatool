@@ -24,23 +24,21 @@ features:
   Total: raw_grade
 
 classes:
-  team_name:
-    home_team:
-      key: index__homeTeamClubName___21dga
-      tag: div
-    away_team:
-      key: index__awayTeamClubName___2U5C2
-      tag: div
+  home_team_name:
+    key: index__homeTeamClubName___21dga
+    tag: div
+  away_team_name:
+    key: index__awayTeamClubName___2U5C2
+    tag: div
   stadium:
     key: index__pitchVertical___1svKR
     tag: div
-  team_players:
-    home_team:
-      key: index__pitchHome___1qSWd
-      tag: div
-    away_team:
-      key: index__pitchAway___2sAoj
-      tag: div
+  home_team_players:
+    key: index__pitchHome___1qSWd
+    tag: div
+  away_team_players:
+    key: index__pitchAway___2sAoj
+    tag: div
   player:
     key: graphic-overlay
     tag: span
