@@ -4,6 +4,7 @@ from random import randint
 from sys import stdout
 from time import sleep
 
+import psycopg2
 from selenium.common.exceptions import NoSuchElementException
 
 import pandas as pd
@@ -188,7 +189,16 @@ class Scraper(object):
 
     # LOAD A DATAFRAME INTO A DATABASE
     def to_db(self, df):
+        self._delete_day_if_exists(**self.credentials['db'])
         return self._df_to_db(df, **self.credentials['db'])
+
+    def _delete_day_if_exists(self, host, port, db, user, password, schema, table):
+        print('Deleting existing data for this day and season...')
+        conn_str = f"host='{host}' dbname='{db}' port={port} user='{user}' password='{password}'"
+        with psycopg2.connect(conn_str) as conn:
+            cur = conn.cursor()
+            day, season = self.day, self.season
+            cur.execute(f"DELETE FROM {schema}.{table} WHERE day = {day} AND season = '{season}'")
 
     @staticmethod
     def _df_to_db(df, host, port, db, user, password, schema, table):
