@@ -101,6 +101,7 @@ class Scraper(object):
             i, n = 0, len(players)
             for player in players:
                 i += 1
+                stdout.write(f'\rParsing {loc}: {i}/{n} players parsed')
                 player_grade = None
                 try:
                     player_grade = player \
@@ -108,9 +109,7 @@ class Scraper(object):
                         .get_attribute('innerHTML')
                 except NoSuchElementException:
                     pass
-
                 if player_grade:
-                    stdout.write(f'\rParsing {loc}: {i}/{n} players parsed')
                     # Move to element and click on it
                     actions = ActionChains(self.driver)
                     self.driver.execute_script("arguments[0].scrollIntoView();", player)
