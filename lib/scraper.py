@@ -175,7 +175,6 @@ class Scraper(object):
 
     # APPLY EXCEPTIONS
     def _apply_maps(self, df):
-        print('Applying substitutions...')
         return df.replace(self.maps)
 
     # EXPORT THE GATHERED DATA
@@ -189,8 +188,8 @@ class Scraper(object):
         df_details.clean_sheet = df_details.clean_sheet.astype(str).apply(fraction_to_float).astype(float)
         # Load players list
         df_players = self.get_player_df()
-        self._apply_maps(df_details)
-        self._apply_maps(df_players)
+        df_players = self._apply_maps(df_players)
+        df_details = self._apply_maps(df_details)
         # Merge scores and goals data together
         df_output = pd.merge(df_players, df_details, on=['day', 'team', 'player'], how='left')
         # Export data as a CSV
