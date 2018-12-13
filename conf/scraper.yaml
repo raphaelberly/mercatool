@@ -74,3 +74,10 @@ classes:
   player_rating:
     key: index__quotation___3KVXQ
     tag: td
+
+maps:
+  position:
+    S: A
+  player:
+    Lopes: Anthony Lopes
+    Pléa: Plea

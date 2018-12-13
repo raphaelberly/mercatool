@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 from warnings import warn
 from random import randint
 from sys import stdout
@@ -17,18 +18,28 @@ from .tools import fraction_to_float
 
 class Scraper(object):
 
-    def __init__(self, day, season, driver, credentials, urls, classes, features, scrape_players_list=True):
+    def __init__(self, day, season, driver, credentials, urls, classes, features, maps):
+
         self.day = day
         self.season = season
+        self.driver = driver
         self.credentials = credentials
         self.urls = urls
         self.classes = classes
         self.features = features
-        # Instantiate urls_to_scrape_list
-        self.urls_to_scrape = []
-        self.players = []
-        self.players_list = [] if scrape_players_list else None
-        self.driver = driver
+        self.maps = maps
+        self.details = []
+
+    def get_player_df(self):
+        print('Getting players dataframe...')
+        path_to_player_csv = 'data/players_{:02d}.csv'.format(self.day)
+        if os.path.exists(path_to_player_csv):
+            print(f'> using cached players list: {path_to_player_csv}')
+            return pd.read_csv(path_to_player_csv)
+        else:
+            df = self.parse_player_list()
+            df.to_csv(path_to_player_csv, index=False)
+            return df
 
     # GET A WEBPAGE
     def get_page(self, url):
@@ -57,7 +68,7 @@ class Scraper(object):
         sleep(randint(3, 5))
 
     # GET LIST OF GAMES URL
-    def parse_games_url(self):
+    def get_url_list(self):
         print('Getting list of URLs to scrape...')
         # Get the day page
         self.get_page(self.urls['calendar'].format(self.day))
@@ -65,6 +76,7 @@ class Scraper(object):
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
         games = soup.findAll(**self.get_find_args('games'))
         # Fill the urls_to_scrape list
+        urls = []
         for game in games:
             game_score = game.find(**self.get_find_args('game_score'))
             game_url = game_score['href'] if game_score else None
@@ -73,9 +85,10 @@ class Scraper(object):
                 # Check that it has the right format (sometimes, ads pop up)
                 if game_url.startswith('/championships'):
                     # Add it to the URLs to scrape
-                    self.urls_to_scrape.append(game_url)
+                    urls.append(game_url)
                 else: warn("Could not retrieve 1 game's URL for day {}".format(self.day))
             else: warn("Could not retrieve 1 game's URL for day {}".format(self.day))
+        return urls
 
     # PARSE GAME DETAILS
     def parse_game_details(self, url):
@@ -118,8 +131,7 @@ class Scraper(object):
                     # Perform function
                     data = self.parse_player_table()
                     data.update({'team': team_name, 'grade': player_grade, 'opponent': opponent_name})
-                    self.players.append(data)
-
+                    self.details.append(data)
             print("")
 
     # PARSE ONE PLAYER'S DATA
@@ -140,7 +152,7 @@ class Scraper(object):
         return data
 
     # PARSE GAME DETAILS
-    def parse_players_list(self):
+    def parse_player_list(self):
         print('Getting players list...')
         self.get_page(self.urls['mercato'])
         # Parse overall code
@@ -149,38 +161,38 @@ class Scraper(object):
         lines = soup.findAll(**self.get_find_args('player_line'))
         # Parse all lines
         to_extract = ['player_name', 'player_position', 'player_team', 'player_rating']
+        players = []
         for line in lines:
             # Remove player first name
             _ = line.find(**self.get_find_args('player_first_name')).extract()
-            # Collect features to extract
-            self.players_list.append(tuple([self.day, self.season] + [line.find(**self.get_find_args(x)).text.replace('\xa0', '') for x in to_extract]))
+            # Parse line
+            player = {'day': self.day, 'season': self.season}
+            for item in to_extract:
+                name = item[len('player_'):]
+                player[name] = line.find(**self.get_find_args(item)).text.replace('\xa0', '')
+            players.append(player)
+        return pd.DataFrame(players)
 
     # APPLY EXCEPTIONS
-    @staticmethod
-    def _apply_exceptions(df):
-        if 'player' in df.columns:
-            df.player = df.player.apply(lambda x: 'Lopes' if x == 'Anthony Lopes' else x)
-            df.player = df.player.apply(lambda x: 'Pléa' if x == 'Plea' else x)
+    def _apply_maps(self, df):
+        print('Applying substitutions...')
+        return df.replace(self.maps)
 
     # EXPORT THE GATHERED DATA
     def export(self):
         print('Exporting data...')
         # Create data frames out of collected lists
-        df_players = pd.DataFrame(self.players).applymap(lambda x: 0 if x == '-' else x).fillna(0)
+        df_details = pd.DataFrame(self.details).applymap(lambda x: 0 if x == '-' else x).fillna(0)
         for col in ['grade', 'raw_grade']:
-            df_players[col] = df_players[col].str.replace(',', '.').astype(float)
-        df_players.perc_successful_passes = df_players.perc_successful_passes.str.rstrip('%').astype(float) / 100
-        df_players.clean_sheet = df_players.clean_sheet.astype(str).apply(fraction_to_float).astype(float)
-        self._apply_exceptions(df_players)
-        if self.players_list is None:
-            df_players_list = pd.read_csv('data/players_{:02d}.csv'.format(self.day))
-            self._apply_exceptions(df_players_list)
-        else:
-            df_players_list = pd.DataFrame(self.players_list, columns=['day', 'season', 'player', 'position', 'team', 'rating'])
-            self._apply_exceptions(df_players_list)
-            df_players_list.to_csv('data/players_{:02d}.csv'.format(self.day), index=False)
+            df_details[col] = df_details[col].str.replace(',', '.').astype(float)
+        df_details.perc_successful_passes = df_details.perc_successful_passes.str.rstrip('%').astype(float) / 100
+        df_details.clean_sheet = df_details.clean_sheet.astype(str).apply(fraction_to_float).astype(float)
+        # Load players list
+        df_players = self.get_player_df()
+        self._apply_maps(df_details)
+        self._apply_maps(df_players)
         # Merge scores and goals data together
-        df_output = pd.merge(df_players_list, df_players, on=['day', 'team', 'player'], how='left')
+        df_output = pd.merge(df_players, df_details, on=['day', 'team', 'player'], how='left')
         # Export data as a CSV
         df_output.to_csv('data/day_{:02d}.csv'.format(self.day), index=False)
         # Upload to the database
@@ -208,12 +220,7 @@ class Scraper(object):
     # SCRAPE THE CHOSEN DAY
     def scrape(self):
         # Get the list of URLs
-        self.parse_games_url()
+        urls = self.get_url_list()
         # Get the games details
-        for game_url in self.urls_to_scrape:
+        for game_url in urls:
             self.parse_game_details(game_url)
-        # Get players list
-        if self.players_list is not None:
-            self.parse_players_list()
-        else:
-            print('Players list not scraped, local data will be used...')
