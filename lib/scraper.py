@@ -13,7 +13,26 @@ from bs4 import BeautifulSoup
 from selenium.webdriver.common.action_chains import ActionChains
 from sqlalchemy import create_engine
 
-from .tools import fraction_to_float
+from .tools import fraction_to_float, ensure_folder_exists
+
+
+def cache_output_df(name):
+
+    def decorator(get_df_function):
+        def wrapper(self, *args):
+            cache_folder = getattr(self, 'cache_folder')
+            path_to_player_csv = os.path.join(cache_folder, f'{name}.csv')
+            if os.path.exists(path_to_player_csv):
+                print(f'> using cached "{name}": {path_to_player_csv}')
+                return pd.read_csv(path_to_player_csv)
+            else:
+                df = get_df_function(self, *args)
+                with ensure_folder_exists(cache_folder):
+                    df.to_csv(path_to_player_csv, index=False)
+                return df
+        return wrapper
+
+    return decorator
 
 
 class Scraper(object):
@@ -30,16 +49,7 @@ class Scraper(object):
         self.maps = maps
         self.details = []
 
-    def get_player_df(self):
-        print('Getting players dataframe...')
-        path_to_player_csv = 'data/players_{:02d}.csv'.format(self.day)
-        if os.path.exists(path_to_player_csv):
-            print(f'> using cached players list: {path_to_player_csv}')
-            return pd.read_csv(path_to_player_csv)
-        else:
-            df = self.parse_player_list()
-            df.to_csv(path_to_player_csv, index=False)
-            return df
+        self.cache_folder = f'.cache/{season}/{day:2d}'
 
     # GET A WEBPAGE
     def get_page(self, url):
@@ -152,8 +162,9 @@ class Scraper(object):
         return data
 
     # PARSE GAME DETAILS
-    def parse_player_list(self):
-        print('Getting players list...')
+    @cache_output_df(name='players')
+    def get_player_df(self):
+        print('Getting players DataFrame...')
         self.get_page(self.urls['mercato'])
         # Parse overall code
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
@@ -192,8 +203,8 @@ class Scraper(object):
         df_details = self._apply_maps(df_details)
         # Merge scores and goals data together
         df_output = pd.merge(df_players, df_details, on=['day', 'team', 'player'], how='left')
-        # Export data as a CSV
-        df_output.to_csv('data/day_{:02d}.csv'.format(self.day), index=False)
+        # Backup data as a CSV
+        df_output.to_csv(f'backup/{self.season}/day_{self.day:02d}.csv', index=False)
         # Upload to the database
         self.to_db(df_output)
 

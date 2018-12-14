@@ -1,6 +1,7 @@
 __pycache__/
 .idea/
+.cache/
+backup/
 drafts/
-data/
 
 conf/credentials.yaml
