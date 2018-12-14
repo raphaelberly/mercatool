@@ -31,5 +31,5 @@ if __name__ == '__main__':
     with run_driver(**conf_driver) as driver:
         scraper = Scraper(day=args.day, driver=driver, credentials=credentials, **conf_scraper)
         scraper.login()
-        scraper.scrape()
-        scraper.export()
+        df_details = scraper.scrape()
+        scraper.export(df_details)

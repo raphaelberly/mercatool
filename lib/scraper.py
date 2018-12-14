@@ -47,7 +47,6 @@ class Scraper(object):
         self.classes = classes
         self.features = features
         self.maps = maps
-        self.details = []
 
         self.cache_folder = f'.cache/{season}/{day:2d}'
 
@@ -101,13 +100,14 @@ class Scraper(object):
         return urls
 
     # PARSE GAME DETAILS
-    def parse_game_details(self, url):
+    def get_game_details_df(self, url):
         print('Getting details from game {}'.format(url))
         url_root = self.urls['root']
         self.get_page(url_root + url)
         # Parse overall code
         soup = BeautifulSoup(self.driver.page_source, 'html.parser')
         # Repeat process for home and away team
+        details = []
         for loc in ['home', 'away']:
             # Get team name
             team_name = soup.find(**self.get_find_args(f'{loc}_team_name')).text
@@ -141,8 +141,9 @@ class Scraper(object):
                     # Perform function
                     data = self.parse_player_table()
                     data.update({'team': team_name, 'grade': player_grade, 'opponent': opponent_name})
-                    self.details.append(data)
+                    details.append(data)
             print("")
+        return pd.DataFrame(details)
 
     # PARSE ONE PLAYER'S DATA
     def parse_player_table(self):
@@ -189,10 +190,10 @@ class Scraper(object):
         return df.replace(self.maps)
 
     # EXPORT THE GATHERED DATA
-    def export(self):
+    def export(self, df_details):
         print('Exporting data...')
         # Create data frames out of collected lists
-        df_details = pd.DataFrame(self.details).applymap(lambda x: 0 if x == '-' else x).fillna(0)
+        df_details = df_details.applymap(lambda x: 0 if x == '-' else x).fillna(0)
         for col in ['grade', 'raw_grade']:
             df_details[col] = df_details[col].str.replace(',', '.').astype(float)
         df_details.perc_successful_passes = df_details.perc_successful_passes.str.rstrip('%').astype(float) / 100
@@ -228,9 +229,12 @@ class Scraper(object):
         df.to_sql(table, con=engine, schema=schema, if_exists='append', index=False)
 
     # SCRAPE THE CHOSEN DAY
+    @cache_output_df(name='details')
     def scrape(self):
         # Get the list of URLs
         urls = self.get_url_list()
         # Get the games details
+        dfs = []
         for game_url in urls:
-            self.parse_game_details(game_url)
+            dfs.append(self.get_game_details_df(game_url))
+        return pd.concat(dfs, ignore_index=True)
