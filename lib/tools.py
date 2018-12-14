@@ -1,3 +1,4 @@
+import os
 from contextlib import contextmanager
 
 import numpy as np
@@ -16,8 +17,9 @@ def fraction_to_float(string):
 
 
 @contextmanager
-def ignored(*exceptions):
+def ensure_folder_exists(path):
     try:
-        yield
-    except exceptions:
+        os.makedirs(path, exist_ok=True)
+        yield path
+    finally:
         pass
