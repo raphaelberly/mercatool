@@ -1,0 +1,31 @@
+season: 2018-2019
+schema: mercatool
+table: players
+
+urls:
+  login: https://www.monpetitgazon.com/?modal=login
+  mercato: https://www.monpetitgazon.com/quotation/1
+
+classes:
+  player_line:
+    key: index__line___2A045
+    tag: tr
+  player_name:
+    key: index__overflow___1ORHV
+    tag: span
+  player_first_name:
+    key: index__firstNameLabel___3edaR
+    tag: span
+  player_position:
+    key: index__playerPositionMobile___36UKg
+    tag: span
+  player_team:
+    key: index__hiddenSm___o9WAX
+    tag: span
+  player_rating:
+    key: index__quotation___3KVXQ
+    tag: td
+
+maps:
+  position:
+    S: A

@@ -1,9 +1,10 @@
 season: 2018-2019
+schema: mercatool
+table: details_new
 
 urls:
   login: https://www.monpetitgazon.com/?modal=login
   calendar: https://www.monpetitgazon.com/championships/1/calendar?day={}
-  mercato: https://www.monpetitgazon.com/quotation/1
   root: https://www.monpetitgazon.com
 
 features:
@@ -56,28 +57,21 @@ classes:
   stats_table:
     key: index__tablestat___3duSS
     tag: table
-  player_line:
-    key: index__line___2A045
-    tag: tr
-  player_name:
-    key: index__overflow___1ORHV
-    tag: span
-  player_first_name:
-    key: index__firstNameLabel___3edaR
-    tag: span
-  player_position:
-    key: index__playerPositionMobile___36UKg
-    tag: span
-  player_team:
-    key: index__hiddenSm___o9WAX
-    tag: span
-  player_rating:
-    key: index__quotation___3KVXQ
-    tag: td
 
 maps:
   position:
-    S: A
+    Goalkeeper: G
+    Defender: D
+    Midfielder: M
+    Forward: A
+  clean_sheet:
+    NaN: 1/2
   player:
     Lopes: Anthony Lopes
-    Pléa: Plea
+
+transform:
+  clean_sheet: lib.transform.fraction_to_float
+  perc_successful_passes: lib.transform.percentage_to_float
+  grade: lib.transform.comma_to_dot_float
+  raw_grade: lib.transform.comma_to_dot_float
+  player: lib.transform.simple_quote_to_double_simple_quote
