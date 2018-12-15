@@ -1,0 +1,28 @@
+CREATE TABLE IF NOT EXISTS mercatool.details_new
+(
+	season VARCHAR(9) NOT NULL,
+	day INTEGER NOT NULL,
+	player TEXT NOT NULL,
+	position TEXT NOT NULL,
+	team TEXT NOT NULL,
+	grade DOUBLE PRECISION,
+	raw_grade DOUBLE PRECISION,
+	played INTEGER DEFAULT 1,
+	goals INTEGER DEFAULT 0,
+	own_goals INTEGER DEFAULT 0,
+	penalties_scored INTEGER DEFAULT 0,
+	penalties_not_on_target INTEGER DEFAULT 0,
+	penalties_stopped_by_goalkeeper INTEGER DEFAULT 0,
+	penalties_stopped_by_post INTEGER DEFAULT 0,
+	perc_successful_passes DOUBLE PRECISION DEFAULT 0,
+	penalties_caused INTEGER DEFAULT 0,
+	penalties_obtained INTEGER DEFAULT 0,
+	decisive_passes INTEGER DEFAULT 0,
+	free_kicks_scored INTEGER DEFAULT 0,
+	mistakes_leading_to_goal INTEGER DEFAULT 0,
+	red_cards INTEGER DEFAULT 0,
+	stops_in_penalty_area INTEGER DEFAULT 0,
+	stops_out_penalty_area INTEGER DEFAULT 0,
+	clean_sheet DOUBLE PRECISION,
+	opponent TEXT NOT NULL
+);
