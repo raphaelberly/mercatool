@@ -33,14 +33,13 @@ class BasicScraper(object):
 
 class Scraper(BasicScraper):
 
-    def __init__(self, driver, credentials, urls, classes, features, maps, transform):
+    def __init__(self, driver, credentials, urls, classes, maps=None, transform=None):
 
         super().__init__(driver)
 
         self.credentials = credentials
         self.urls = urls
         self.classes = classes
-        self.features = features
         self.maps = maps
         self.transform = transform
 
@@ -64,18 +63,22 @@ class Scraper(BasicScraper):
         password.submit()
         sleep(2)
 
-    def _apply_maps(self, player_dict):
+    def _apply_maps(self, dict_item):
+        if not self.maps:
+            return dict_item
         for key, map in self.maps.items():
-            if key in player_dict:
-                old_value = player_dict[key]
-                player_dict[key] = map.get(old_value, old_value)
-        return player_dict
+            if key in dict_item:
+                old_value = dict_item[key]
+                dict_item[key] = map.get(old_value, old_value)
+        return dict_item
 
-    def _apply_transformations(self, player_dict):
+    def _apply_transformations(self, dict_item):
+        if not self.transform:
+            return dict_item
         for key, func in self.transform.items():
-            if key in player_dict:
-                player_dict[key] = resolve(func)(player_dict[key])
-        return player_dict
+            if key in dict_item:
+                dict_item[key] = resolve(func)(dict_item[key])
+        return dict_item
 
     # EMPTY A DAY IF
     @staticmethod
@@ -118,9 +121,10 @@ class Scraper(BasicScraper):
 
 class PlayerScraper(Scraper):
 
-    def __init__(self, day, season, driver, credentials, urls, classes, features, maps, transform):
+    def __init__(self, day, season, driver, credentials, urls, classes,
+                 maps=None, transform=None):
 
-        super().__init__(driver, credentials, urls, classes, features, maps, transform)
+        super().__init__(driver, credentials, urls, classes, maps, transform)
 
         self.day = day
         self.season = season
@@ -150,12 +154,14 @@ class PlayerScraper(Scraper):
 
 class DetailScraper(Scraper):
 
-    def __init__(self, day, season, driver, credentials, urls, classes, features, maps, transform):
+    def __init__(self, day, season, driver, credentials, urls, classes, features,
+                 maps=None, transform=None):
 
-        super().__init__(driver, credentials, urls, classes, features, maps, transform)
+        super().__init__(driver, credentials, urls, classes, maps, transform)
 
         self.day = day
         self.season = season
+        self.features = features
 
     # GET LIST OF GAMES URL
     def get_urls(self):
