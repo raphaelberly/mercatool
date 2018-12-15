@@ -85,22 +85,15 @@ class Scraper(BasicScraper):
 
     # EMPTY A DAY IF
     @staticmethod
-    @contextmanager
-    def _connect_to_db(host, port, db, user, password):
-        conn_str = f"host='{host}' dbname='{db}' port={port} user='{user}' password='{password}'"
-        conn = psycopg2.connect(conn_str)
-        try: yield conn
-        except: pass
-        else: conn.commit()
-        finally: conn.close()
+    def _get_connection_string(host, port, db, user, password):
+        return f"host='{host}' dbname='{db}' port={port} user='{user}' password='{password}'"
 
-    def erase_day_from_table(self):
+    def _erase_day_from_table(self, conn):
         print('Deleting existing data for this day and season...')
-        with self._connect_to_db(**self.credentials['db']) as conn:
-            cur = conn.cursor()
-            query = f"DELETE FROM {self.table_name} WHERE day={self.day} AND season='{self.season}'"
-            cur.execute(query)
-            cur.close()
+        cur = conn.cursor()
+        query = f"DELETE FROM {self.table_name} WHERE day={self.day} AND season='{self.season}'"
+        cur.execute(query)
+        cur.close()
 
     @staticmethod
     def _get_insert_query(table_name, player_dict):
@@ -111,7 +104,10 @@ class Scraper(BasicScraper):
     # EMPTY A DAY IF
     def insert_values_into_table(self, values_generator, batch_size=BATCH_SIZE):
         print('Inserting new data for this day and season...')
-        with self._connect_to_db(**self.credentials['db']) as conn:
+        with psycopg2.connect(self._get_connection_string(**self.credentials['db'])) as conn:
+            # Erase day if already existing in the database
+            self._erase_day_from_table(conn)
+            # Insert values by batch
             i, queries = 0, []
             for value in values_generator:
                 i += 1
