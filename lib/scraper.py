@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 import os
-from warnings import warn
-from random import randint
-from sys import stdout
+from contextlib import contextmanager
 from time import sleep
 
 import psycopg2
@@ -11,49 +9,40 @@ from selenium.common.exceptions import NoSuchElementException
 import pandas as pd
 from bs4 import BeautifulSoup
 from selenium.webdriver.common.action_chains import ActionChains
-from sqlalchemy import create_engine
 
-from .tools import fraction_to_float, ensure_folder_exists
-
-
-def cache_output_df(name):
-
-    def decorator(get_df_function):
-        def wrapper(self, *args):
-            cache_folder = getattr(self, 'cache_folder')
-            path_to_player_csv = os.path.join(cache_folder, f'{name}.csv')
-            if os.path.exists(path_to_player_csv):
-                print(f'> using cached "{name}": {path_to_player_csv}')
-                return pd.read_csv(path_to_player_csv)
-            else:
-                df = get_df_function(self, *args)
-                with ensure_folder_exists(cache_folder):
-                    df.to_csv(path_to_player_csv, index=False)
-                return df
-        return wrapper
-
-    return decorator
+from .tools import resolve, ensure_folder_exists
 
 
-class Scraper(object):
+BATCH_SIZE = 10
 
-    def __init__(self, day, season, driver, credentials, urls, classes, features, maps):
 
-        self.day = day
-        self.season = season
+class BasicScraper(object):
+
+    def __init__(self, driver):
         self.driver = driver
+
+    # GET A WEBPAGE
+    def get_page(self, url):
+        self.driver.get(url)
+        sleep(1)
+
+    # GET SOUP FROM CURRENT WEBPAGE
+    def get_soup(self):
+        return BeautifulSoup(self.driver.page_source, 'html.parser')
+
+
+class Scraper(BasicScraper):
+
+    def __init__(self, driver, credentials, urls, classes, features, maps, transform):
+
+        super().__init__(driver)
+
         self.credentials = credentials
         self.urls = urls
         self.classes = classes
         self.features = features
         self.maps = maps
-
-        self.cache_folder = f'.cache/{season}/{day:2d}'
-
-    # GET A WEBPAGE
-    def get_page(self, url):
-        self.driver.get(url)
-        sleep(randint(2, 3))
+        self.transform = transform
 
     # GET PARAMS OF THE BEAUTIFUL SOUP FIND(ALL) FUNCTIONS
     def get_find_args(self, class_name):
@@ -73,107 +62,79 @@ class Scraper(object):
         password.send_keys(self.credentials['mpg']['password'])
         username.send_keys(self.credentials['mpg']['username'])
         password.submit()
-        # Sleep
-        sleep(randint(3, 5))
+        sleep(2)
 
-    # GET LIST OF GAMES URL
-    def get_url_list(self):
-        print('Getting list of URLs to scrape...')
-        # Get the day page
-        self.get_page(self.urls['calendar'].format(self.day))
-        # Parse the day page's code
-        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        games = soup.findAll(**self.get_find_args('games'))
-        # Fill the urls_to_scrape list
-        urls = []
-        for game in games:
-            game_score = game.find(**self.get_find_args('game_score'))
-            game_url = game_score['href'] if game_score else None
-            # Check that it could find a URL
-            if game_url:
-                # Check that it has the right format (sometimes, ads pop up)
-                if game_url.startswith('/championships'):
-                    # Add it to the URLs to scrape
-                    urls.append(game_url)
-                else: warn("Could not retrieve 1 game's URL for day {}".format(self.day))
-            else: warn("Could not retrieve 1 game's URL for day {}".format(self.day))
-        return urls
+    def _apply_maps(self, player_dict):
+        for key, map in self.maps.items():
+            if key in player_dict:
+                old_value = player_dict[key]
+                player_dict[key] = map.get(old_value, old_value)
+        return player_dict
 
-    # PARSE GAME DETAILS
-    def get_game_details_df(self, url):
-        print('Getting details from game {}'.format(url))
-        url_root = self.urls['root']
-        self.get_page(url_root + url)
-        # Parse overall code
-        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        # Repeat process for home and away team
-        details = []
-        for loc in ['home', 'away']:
-            # Get team name
-            team_name = soup.find(**self.get_find_args(f'{loc}_team_name')).text
-            # Get the team players
-            stadium = self.driver.find_element_by_class_name(self.classes['stadium']['key'])
-            players = stadium \
-                .find_element_by_class_name(self.classes[f'{loc}_team_players']['key']) \
-                .find_elements_by_class_name(self.classes['player']['key'])
-            # Get the team opponents
-            opponent_loc = 'home' if loc == 'away' else 'away'
-            opponent_name = soup.find(**self.get_find_args(f'{opponent_loc}_team_name')).text
+    def _apply_transformations(self, player_dict):
+        for key, func in self.transform.items():
+            if key in player_dict:
+                player_dict[key] = resolve(func)(player_dict[key])
+        return player_dict
 
-            # Iterate over all players of the team
-            i, n = 0, len(players)
-            for player in players:
+    # EMPTY A DAY IF
+    @staticmethod
+    @contextmanager
+    def _connect_to_db(host, port, db, user, password):
+        conn_str = f"host='{host}' dbname='{db}' port={port} user='{user}' password='{password}'"
+        conn = psycopg2.connect(conn_str)
+        try: yield conn
+        except: pass
+        else: conn.commit()
+        finally: conn.close()
+
+    def erase_day_from_table(self, schema, table, day, season):
+        print('Deleting existing data for this day and season...')
+        with self._connect_to_db(**self.credentials['db']) as conn:
+            cur = conn.cursor()
+            cur.execute(f"DELETE FROM {schema}.{table} WHERE day = {day} AND season = '{season}'")
+            cur.close()
+
+    @staticmethod
+    def _get_insert_query(schema_name, table_name, player_dict):
+        key_str = ','.join(player_dict.keys())
+        val_str = "'{}'".format("','".join([str(val) for val in player_dict.values()]))
+        return f'INSERT INTO {schema_name}.{table_name} ({key_str}) VALUES ({val_str});'
+
+    # EMPTY A DAY IF
+    def insert_values_into_table(self, values_generator, schema, table, batch_size=BATCH_SIZE):
+        print('Deleting existing data for this day and season...')
+        with self._connect_to_db(**self.credentials['db']) as conn:
+            i, queries = 0, []
+            for value in values_generator:
                 i += 1
-                stdout.write(f'\rParsing {loc}: {i}/{n} players parsed')
-                player_grade = None
-                try:
-                    player_grade = player \
-                        .find_element_by_class_name(self.classes['player_grade']['key']) \
-                        .get_attribute('innerHTML')
-                except NoSuchElementException:
-                    pass
-                if player_grade:
-                    # Move to element and click on it
-                    actions = ActionChains(self.driver)
-                    self.driver.execute_script("arguments[0].scrollIntoView();", player)
-                    actions.move_to_element(player).click().perform()
-                    sleep(randint(1, 2))
-                    # Perform function
-                    data = self.parse_player_table()
-                    data.update({'team': team_name, 'grade': player_grade, 'opponent': opponent_name})
-                    details.append(data)
-            print("")
-        return pd.DataFrame(details)
+                queries.append(self._get_insert_query(schema, table, value))
+                if i == batch_size:
+                    cur = conn.cursor()
+                    cur.execute('\n'.join(queries))
+                    cur.close()
+                    i, queries = 0, []
 
-    # PARSE ONE PLAYER'S DATA
-    def parse_player_table(self):
-        # Parse the day page's code
-        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-        table = soup.find(**self.get_find_args('stats_table'))
-        lines = table.findAll('tr')
-        data = {'player': lines[2].text.split(" - ")[0], 'day': self.day, 'played': 1}
-        for line in lines[2:]:
-            feature = [col.text for col in line.findAll('td')]
-            if feature[0] in self.features.keys():
-                # Handle the raw score separately
-                if feature[1] != "":
-                    data.update({self.features[feature[0]]: feature[1]})
-                else:
-                    data.update({self.features[feature[0]]: feature[2]})
-        return data
+
+class PlayerScraper(Scraper):
+
+    def __init__(self, day, season, driver, credentials, urls, classes, features, maps, transform):
+
+        super().__init__(driver, credentials, urls, classes, features, maps, transform)
+
+        self.day = day
+        self.season = season
 
     # PARSE GAME DETAILS
-    @cache_output_df(name='players')
     def get_player_df(self):
         print('Getting players DataFrame...')
         self.get_page(self.urls['mercato'])
         # Parse overall code
-        soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+        soup = self.get_soup()
         # Get all lines (one per player)
         lines = soup.findAll(**self.get_find_args('player_line'))
         # Parse all lines
         to_extract = ['player_name', 'player_position', 'player_team', 'player_rating']
-        players = []
         for line in lines:
             # Remove player first name
             _ = line.find(**self.get_find_args('player_first_name')).extract()
@@ -182,59 +143,91 @@ class Scraper(object):
             for item in to_extract:
                 name = item[len('player_'):]
                 player[name] = line.find(**self.get_find_args(item)).text.replace('\xa0', '')
-            players.append(player)
-        return pd.DataFrame(players)
+            player = self._apply_maps(player)
+            player = self._apply_transformations(player)
+            yield player
 
-    # APPLY EXCEPTIONS
-    def _apply_maps(self, df):
-        return df.replace(self.maps)
 
-    # EXPORT THE GATHERED DATA
-    def export(self, df_details):
-        print('Exporting data...')
-        # Create data frames out of collected lists
-        df_details = df_details.applymap(lambda x: 0 if x == '-' else x).fillna(0)
-        for col in ['grade', 'raw_grade']:
-            df_details[col] = df_details[col].str.replace(',', '.').astype(float)
-        df_details.perc_successful_passes = df_details.perc_successful_passes.str.rstrip('%').astype(float) / 100
-        df_details.clean_sheet = df_details.clean_sheet.astype(str).apply(fraction_to_float).astype(float)
-        # Load players list
-        df_players = self.get_player_df()
-        df_players = self._apply_maps(df_players)
-        df_details = self._apply_maps(df_details)
-        # Merge scores and goals data together
-        df_output = pd.merge(df_players, df_details, on=['day', 'team', 'player'], how='left')
-        # Backup data as a CSV
-        df_output.to_csv(f'backup/{self.season}/day_{self.day:02d}.csv', index=False)
-        # Upload to the database
-        self.to_db(df_output)
+class DetailScraper(Scraper):
 
-    # LOAD A DATAFRAME INTO A DATABASE
-    def to_db(self, df):
-        self._delete_day_if_exists(**self.credentials['db'])
-        return self._df_to_db(df, **self.credentials['db'])
+    def __init__(self, day, season, driver, credentials, urls, classes, features, maps, transform):
 
-    def _delete_day_if_exists(self, host, port, db, user, password, schema, table):
-        print('Deleting existing data for this day and season...')
-        conn_str = f"host='{host}' dbname='{db}' port={port} user='{user}' password='{password}'"
-        with psycopg2.connect(conn_str) as conn:
-            cur = conn.cursor()
-            day, season = self.day, self.season
-            cur.execute(f"DELETE FROM {schema}.{table} WHERE day = {day} AND season = '{season}'")
+        super().__init__(driver, credentials, urls, classes, features, maps, transform)
 
-    @staticmethod
-    def _df_to_db(df, host, port, db, user, password, schema, table):
-        engine_string = f'postgresql+psycopg2://{user}:{password}@{host}:{port}/{db}'
-        engine = create_engine(engine_string)
-        df.to_sql(table, con=engine, schema=schema, if_exists='append', index=False)
+        self.day = day
+        self.season = season
 
-    # SCRAPE THE CHOSEN DAY
-    @cache_output_df(name='details')
-    def scrape(self):
-        # Get the list of URLs
-        urls = self.get_url_list()
-        # Get the games details
-        dfs = []
-        for game_url in urls:
-            dfs.append(self.get_game_details_df(game_url))
-        return pd.concat(dfs, ignore_index=True)
+    # GET LIST OF GAMES URL
+    def get_urls(self):
+        print('Getting list of URLs to scrape...')
+        # Get the day page
+        self.get_page(self.urls['calendar'].format(self.day))
+        # Parse the day page's code
+        soup = self.get_soup()
+        games = soup.findAll(**self.get_find_args('games'))
+        # Fill the urls_to_scrape list
+        for game in games:
+            game_score = game.find(**self.get_find_args('game_score'))
+            game_url = game_score['href'] if game_score else None
+            # Check that it could find a URL and it has the right format
+            if game_url:
+                # Check that it  (sometimes, ads pop up)
+                if game_url.startswith('/championships'):
+                    yield game_url
+
+    # PARSE GAME DETAILS
+    def get_player_values(self, url_generator):
+        for url in url_generator:
+            print('Getting details from game {}'.format(url))
+            self.get_page(self.urls['root'] + url)
+            soup = self.get_soup()
+            # Repeat process for home and away team
+            for loc in ['home', 'away']:
+                # Get team name
+                team_name = soup.find(**self.get_find_args(f'{loc}_team_name')).text
+                # Get the team players
+                stadium = self.driver.find_element_by_class_name(self.classes['stadium']['key'])
+                players = stadium \
+                    .find_element_by_class_name(self.classes[f'{loc}_team_players']['key']) \
+                    .find_elements_by_class_name(self.classes['player']['key'])
+                # Get the team opponents
+                opponent_loc = 'home' if loc == 'away' else 'away'
+                opponent_name = soup.find(**self.get_find_args(f'{opponent_loc}_team_name')).text
+                # Iterate over all players of the team
+                for player in players:
+                    try:
+                        grade = player \
+                            .find_element_by_class_name(self.classes['player_grade']['key']) \
+                            .get_attribute('innerHTML')
+                    except NoSuchElementException:
+                        continue
+                    player_dict = self._create_player_dict(player)
+                    player_dict.update({'team': team_name, 'grade': grade, 'opponent': opponent_name})
+                    player_dict = self._apply_maps(player_dict)
+                    player_dict = self._apply_transformations(player_dict)
+                    yield player_dict
+
+    # PARSE ONE PLAYER'S DATA
+    def _create_player_dict(self, player):
+        # Move to element and click on it
+        actions = ActionChains(self.driver)
+        self.driver.execute_script("arguments[0].scrollIntoView();", player)
+        actions.move_to_element(player).click().perform()
+        # Parse the day page's code
+        soup = self.get_soup()
+        table = soup.find(**self.get_find_args('stats_table'))
+        lines = table.findAll('tr')
+        # Parse first lines
+        player, position = tuple(lines[2].text.split(' - '))
+        data = {'player': player, 'position': position, 'day': self.day, 'season': self.season}
+        # Iterate through all lines except first ones
+        for line in lines[2:]:
+            feature = [col.text for col in line.findAll('td')]
+            if feature[0] in self.features:
+                # Handle the raw score
+                if feature[1] == '':
+                    data.update({self.features[feature[0]]: feature[2]})
+                # Handle the non-zero cases (where value == '-')
+                elif feature[1] != '-':
+                    data.update({self.features[feature[0]]: feature[1]})
+        return data
