@@ -3,33 +3,31 @@ import argparse
 import yaml
 
 from lib.driver import run_driver
-from lib.scraper import Scraper
+from lib.tools import resolve
 
-
-DEFAULT_CREDENTIALS_LOC = 'conf/credentials.yaml'
-DEFAULT_DRIVER_CONF_LOC = 'conf/driver.yaml'
-DEFAULT_SCRAPER_CONF_LOC = 'conf/scraper.yaml'
+DEFAULT_DRIVER = 'conf/driver.yaml'
+DEFAULT_CREDENTIALS = 'conf/credentials.yaml'
 
 
 if __name__ == '__main__':
 
     # Create argument parser
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument('--day', required=True, type=int)
-    parser.add_argument('--credentials', type=str)
-    parser.add_argument('--conf-driver', type=str)
-    parser.add_argument('--conf-scraper', type=str)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--day', required=True, type=int, help='Day to scrape')
+    parser.add_argument('--scraper', required=True, type=str, help='Path to scraper config')
+    parser.add_argument('--credentials', default=DEFAULT_CREDENTIALS, help='Path to credentials')
+    parser.add_argument('--driver', default=DEFAULT_DRIVER, help='Path to driver config')
 
     # Parse arguments
     args = parser.parse_args()
-
-    credentials = yaml.load(open(args.credentials or DEFAULT_CREDENTIALS_LOC))
-    conf_driver = yaml.load(open(args.conf_driver or DEFAULT_DRIVER_CONF_LOC))
-    conf_scraper = yaml.load(open(args.conf_scraper or DEFAULT_SCRAPER_CONF_LOC))
+    conf_scraper = yaml.load(open(args.scraper))
+    credentials = yaml.load(open(args.credentials))
+    conf_driver = yaml.load(open(args.driver))
 
     # Instantiate the scraper
     with run_driver(**conf_driver) as driver:
+
+        Scraper = resolve(conf_scraper.pop('scraper'))
         scraper = Scraper(day=args.day, driver=driver, credentials=credentials, **conf_scraper)
         scraper.login()
-        df_details = scraper.scrape()
-        scraper.export(df_details)
+        scraper.run()

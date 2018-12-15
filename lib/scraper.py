@@ -116,7 +116,6 @@ class Scraper(BasicScraper):
                     cur = conn.cursor()
                     cur.execute('\n'.join(queries))
                     cur.close()
-                    print(len(queries))
                     i, queries = 0, []
 
 
@@ -142,6 +141,11 @@ class RatingScraper(Scraper):
             player = self._apply_maps(player)
             player = self._apply_transformations(player)
             yield player
+
+    # RUN SCRAPER
+    def run(self):
+        values = self.get_rating_values()
+        self.insert_values_into_table(values)
 
 
 class DetailScraper(Scraper):
@@ -226,3 +230,9 @@ class DetailScraper(Scraper):
                 elif feature[1] != '-':
                     data.update({self.features[feature[0]]: feature[1]})
         return data
+
+    # RUN SCRAPER
+    def run(self):
+        urls = self.get_urls()
+        values = self.get_player_values(urls)
+        self.insert_values_into_table(values)

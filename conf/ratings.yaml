@@ -1,3 +1,4 @@
+scraper: lib.scraper.RatingScraper
 season: 2018-2019
 table_name: mercatool.ratings
 
