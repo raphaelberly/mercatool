@@ -28,3 +28,6 @@ classes:
 mappings:
   position:
     S: A
+
+transformations:
+  player: lib.transformations.simple_quote_to_double_simple_quote
