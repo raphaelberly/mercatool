@@ -1,6 +1,5 @@
 season: 2018-2019
-schema: mercatool
-table: details_new
+table_name: mercatool.details_new
 
 urls:
   login: https://www.monpetitgazon.com/?modal=login
@@ -58,7 +57,7 @@ classes:
     key: index__tablestat___3duSS
     tag: table
 
-maps:
+mappings:
   position:
     Goalkeeper: G
     Defender: D
@@ -69,9 +68,9 @@ maps:
   player:
     Lopes: Anthony Lopes
 
-transform:
-  clean_sheet: lib.transform.fraction_to_float
-  perc_successful_passes: lib.transform.percentage_to_float
-  grade: lib.transform.comma_to_dot_float
-  raw_grade: lib.transform.comma_to_dot_float
-  player: lib.transform.simple_quote_to_double_simple_quote
+transformations:
+  clean_sheet: lib.transformations.fraction_to_float
+  perc_successful_passes: lib.transformations.percentage_to_float
+  grade: lib.transformations.comma_to_dot_float
+  raw_grade: lib.transformations.comma_to_dot_float
+  player: lib.transformations.simple_quote_to_double_simple_quote
