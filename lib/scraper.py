@@ -100,7 +100,7 @@ class Scraper(BasicScraper):
         return f'INSERT INTO {table_name} ({key_str}) VALUES ({val_str});'
 
     # EMPTY A DAY IF
-    def insert_values_into_table(self, values_generator, batch_size=BATCH_SIZE):
+    def insert_values_into_table(self, values_generator, batch_size=1):
         print('Inserting new data for this day and season...')
         with psycopg2.connect(self._get_connection_string(**self.credentials['db'])) as conn:
             # Erase day if already existing in the database
@@ -141,7 +141,7 @@ class RatingScraper(Scraper):
     # RUN SCRAPER
     def run(self):
         values = self.get_rating_values()
-        self.insert_values_into_table(values)
+        self.insert_values_into_table(values, BATCH_SIZE)
 
 
 class DetailScraper(Scraper):
@@ -231,4 +231,4 @@ class DetailScraper(Scraper):
     def run(self):
         urls = self.get_urls()
         values = self.get_player_values(urls)
-        self.insert_values_into_table(values)
+        self.insert_values_into_table(values, BATCH_SIZE)
