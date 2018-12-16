@@ -1,6 +1,6 @@
 scraper: lib.scraper.DetailScraper
 season: 2018-2019
-table_name: mercatool.details_new
+table_name: mercatool.details
 
 urls:
   login: https://www.monpetitgazon.com/?modal=login
