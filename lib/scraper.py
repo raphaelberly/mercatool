@@ -1,9 +1,11 @@
+from functools import partial
 from time import sleep
 
 import psycopg2
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
+from toolz import partition_all
 
 from .tools import resolve
 
@@ -104,15 +106,13 @@ class Scraper(BasicScraper):
             # Erase day if already existing in the database
             self._erase_day_from_table(conn)
             # Insert values by batch
-            i, queries = 0, []
-            for value in values_generator:
-                i += 1
-                queries.append(self._get_insert_query(self.table_name, value))
-                if i == batch_size:
-                    cur = conn.cursor()
-                    cur.execute('\n'.join(queries))
-                    cur.close()
-                    i, queries = 0, []
+            _get_insert_query = partial(self._get_insert_query, self.table_name)
+            query_generator = map(_get_insert_query, values_generator)
+            query_batch_generator = partition_all(batch_size, query_generator)
+            for query_batch in query_batch_generator:
+                cur = conn.cursor()
+                cur.execute('\n'.join(query_batch))
+                cur.close()
 
 
 class RatingScraper(Scraper):
