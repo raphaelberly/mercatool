@@ -1,15 +1,11 @@
-# -*- coding: utf-8 -*-
-from contextlib import contextmanager
 from time import sleep
 
 import psycopg2
-from selenium.common.exceptions import NoSuchElementException
-
 from bs4 import BeautifulSoup
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 
-from .tools import resolve, ensure_folder_exists
-
+from .tools import resolve
 
 BATCH_SIZE = 10
 

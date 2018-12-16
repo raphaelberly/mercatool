@@ -66,8 +66,6 @@ mappings:
     Forward: A
   clean_sheet:
     NaN: 1/2
-  player:
-    Lopes: Anthony Lopes
 
 transformations:
   clean_sheet: lib.transformations.fraction_to_float
