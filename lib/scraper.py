@@ -24,7 +24,6 @@ class BasicScraper(object):
     # GET A WEBPAGE
     def get_page(self, url):
         self.driver.get(url)
-        sleep(1)
 
     # GET SOUP FROM CURRENT WEBPAGE
     def get_soup(self):
