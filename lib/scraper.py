@@ -169,6 +169,7 @@ class DetailScraper(Scraper):
         soup = self.get_soup()
         games = soup.findAll(**self.get_find_args('games'))
         # Fill the urls_to_scrape list
+        i = 0
         for game in games:
             game_score = game.find(**self.get_find_args('game_score'))
             game_url = game_score['href'] if game_score else None
@@ -176,7 +177,10 @@ class DetailScraper(Scraper):
             if game_url:
                 # Check that it  (sometimes, ads pop up)
                 if game_url.startswith('/championships'):
+                    i += 1
                     yield game_url
+        if i < 10:
+            LOGGER.warning(f'{10-i} games could not be scraped (no game page found)')
 
     # PARSE GAME DETAILS
     def get_player_values(self, url_generator):
