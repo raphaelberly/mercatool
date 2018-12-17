@@ -3,18 +3,18 @@
 This tool is a web scraper used to collect MPG (a soccer fantasy league) data and to insert it into 
 a postgres database.
 
-## 1. Application description
+## 1. Description
 
 Two scrapers are part of this project:
 
 - **DetailScraper:** this scraper collects data regarding the performance of all players who actually 
-played on a championship day
+played on a given championship day, and inserts it into a postgres table
 - **RatingScraper:** this scraper collects data regarding all players' position and rating at a given
-time. This information can be added to the "details" through a join based on the (season, day, team,
-player) columns.
+time, and inserts it into a postgres table
 
+The two resulting tables can be joined on columns: (season, day, team, player).
 
-The scrapers run on a dockerized `Selenium` browser.  The HTML parser used is `BeautifulSoup4`. The 
+Both scrapers run on a dockerized `Selenium` browser.  The HTML parser used is `BeautifulSoup4`. The 
 parsed data is inserted into the postgres database using `psycopg2`.
 
 Python generators are being used for efficiency and scalability. At the end of the process, insert 
