@@ -1,9 +1,16 @@
 import argparse
+import logging
 
 import yaml
 
 from lib.driver import run_driver
+from lib.logging import configure_logging
 from lib.tools import resolve
+
+# Logging setup
+configure_logging()
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.INFO)
 
 DEFAULT_DRIVER = 'conf/driver.yaml'
 DEFAULT_CREDENTIALS = 'conf/credentials.yaml'
@@ -24,10 +31,13 @@ if __name__ == '__main__':
     credentials = yaml.load(open(args.credentials))
     conf_driver = yaml.load(open(args.driver))
 
-    # Instantiate the scraper
-    with run_driver(**conf_driver) as driver:
+    LOGGER.info(f'Starting scraper for day {args.day}, season {conf_scraper["season"]}')
 
+    # Run scraper
+    with run_driver(**conf_driver) as driver:
         Scraper = resolve(conf_scraper.pop('scraper'))
         scraper = Scraper(day=args.day, driver=driver, credentials=credentials, **conf_scraper)
         scraper.login()
         scraper.run()
+
+    LOGGER.info('Done scraping')

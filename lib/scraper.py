@@ -1,3 +1,4 @@
+import logging
 from functools import partial
 from time import sleep
 
@@ -6,8 +7,11 @@ from bs4 import BeautifulSoup
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 from toolz import partition_all
+from tqdm import tqdm
 
 from .tools import resolve
+
+LOGGER = logging.getLogger(__name__)
 
 BATCH_SIZE = 10
 
@@ -53,7 +57,7 @@ class Scraper(BasicScraper):
 
     # LOG IN TO THE WEBSITE
     def login(self):
-        print('Logging in...')
+        LOGGER.info('Logging in')
         # Get the login page
         self.driver.get(self.urls['login'])
         # Submit the credentials
@@ -87,7 +91,7 @@ class Scraper(BasicScraper):
         return f"host='{host}' dbname='{db}' port={port} user='{user}' password='{password}'"
 
     def _erase_day_from_table(self, conn):
-        print('Deleting existing data for this day and season...')
+        LOGGER.info(f'Deleting existing data')
         cur = conn.cursor()
         query = f"DELETE FROM {self.table_name} WHERE day={self.day} AND season='{self.season}'"
         cur.execute(query)
@@ -101,25 +105,30 @@ class Scraper(BasicScraper):
 
     # EMPTY A DAY IF
     def insert_values_into_table(self, values_generator, batch_size=1):
-        print('Inserting new data for this day and season...')
         with psycopg2.connect(self._get_connection_string(**self.credentials['db'])) as conn:
             # Erase day if already existing in the database
             self._erase_day_from_table(conn)
+            # Take care of logging
+            LOGGER.info('Scraping data and uploading it to database')
+            tqdm_kwargs = {'desc': '> scraping', 'unit': ' players processed'}
+            tqdm_values_generator = tqdm(values_generator, **tqdm_kwargs)
             # Insert values by batch
             _get_insert_query = partial(self._get_insert_query, self.table_name)
-            query_generator = map(_get_insert_query, values_generator)
+            query_generator = map(_get_insert_query, tqdm_values_generator)
             query_batch_generator = partition_all(batch_size, query_generator)
+            i = 0
             for query_batch in query_batch_generator:
                 cur = conn.cursor()
                 cur.execute('\n'.join(query_batch))
                 cur.close()
+                i += len(query_batch)
+            LOGGER.info(f'Data from {i} players was scraped and sent to database')
 
 
 class RatingScraper(Scraper):
 
     # PARSE GAME DETAILS
     def get_rating_values(self):
-        print('Getting players ratings...')
         self.get_page(self.urls['mercato'])
         # Parse overall code
         soup = self.get_soup()
@@ -154,7 +163,6 @@ class DetailScraper(Scraper):
 
     # GET LIST OF GAMES URL
     def get_urls(self):
-        print('Getting list of URLs to scrape...')
         # Get the day page
         self.get_page(self.urls['calendar'].format(self.day))
         # Parse the day page's code
@@ -173,7 +181,6 @@ class DetailScraper(Scraper):
     # PARSE GAME DETAILS
     def get_player_values(self, url_generator):
         for url in url_generator:
-            print('Getting details from game {}'.format(url))
             self.get_page(self.urls['root'] + url)
             soup = self.get_soup()
             # Repeat process for home and away team

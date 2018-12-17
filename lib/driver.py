@@ -1,3 +1,4 @@
+import logging
 from contextlib import contextmanager
 from time import sleep, time
 
@@ -6,6 +7,8 @@ from selenium import webdriver
 from selenium.webdriver import DesiredCapabilities
 from selenium.webdriver.chrome.options import Options
 from urllib3.exceptions import ProtocolError
+
+LOGGER = logging.getLogger(__name__)
 
 SLEEPING_TIME = 1
 
@@ -37,17 +40,17 @@ def _get_driver(options, timeout=10):
 @contextmanager
 def run_driver(docker_image, driver_lang='en', **kwargs):
 
-    print('Starting docker container...')
+    LOGGER.info('Starting docker container')
     client = docker.from_env()
     container = client.containers.run(docker_image, detach=True, ports={'4444/tcp': 4444})
 
     try:
-        print('Starting driver...')
+        LOGGER.info('Starting driver')
         options = _get_options(driver_lang, *kwargs.values())
         driver = _get_driver(options)
         yield driver
 
     finally:
-        print('Stopping driver and docker container...')
+        LOGGER.info('Stopping driver and docker container')
         container.stop()
         container.remove()
