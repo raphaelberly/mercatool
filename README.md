@@ -29,7 +29,9 @@ To get the scraper to run, you will need to have:
 
 - A python environment (3.6+) meeting the requirements specified in the file `requirements.txt`
 - A "Standalone-Chrome" selenium docker image (3.14+), with the proper name and version specified in
-the driver configuration file (`conf/driver.yaml` per default)
+the driver configuration file (`conf/driver.yaml` per default). Such an image can be pulled from 
+[here](https://hub.docker.com/u/selenium), or built using 
+[this](https://github.com/DeinChristian/rpi-docker-selenium) for armhf (Armv7) based devices.
 - A postgres database with two tables, which creation SQL queries can be found in the `lld` folder 
 (`details.sql` and `ratings.sql`). The names must be matching those in the configuration file 
 `conf/driver.yaml`
