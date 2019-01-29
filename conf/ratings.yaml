@@ -28,7 +28,12 @@ classes:
 
 mappings:
   position:
-    S: A
+    ST: A
+    AM: M
+    DM: M
+    WB: D
+    CB: D
+    GK: G
 
 transformations:
   player: lib.transformations.simple_quote_to_double_simple_quote
