@@ -43,7 +43,7 @@ classes:
     key: index__pitchAway___2sAoj
     tag: div
   player:
-    key: graphic-overlay
+    key: team-graphic
     tag: span
   player_grade:
     key: rate

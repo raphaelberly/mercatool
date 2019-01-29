@@ -193,7 +193,8 @@ class DetailScraper(Scraper):
                 # Get the team players
                 stadium = self.driver.find_element_by_class_name(self.classes['stadium']['key'])
                 players = stadium \
-                    .find_element_by_class_name(self.classes[f'{loc}_team_players']['key']) \
+                    .find_element_by_class_name(self.classes[f'{loc}_team_players']['key'])
+                players = players \
                     .find_elements_by_class_name(self.classes['player']['key'])
                 # Get the team opponents
                 opponent_loc = 'home' if loc == 'away' else 'away'
@@ -215,9 +216,7 @@ class DetailScraper(Scraper):
     # PARSE ONE PLAYER'S DATA
     def _create_player_dict(self, player):
         # Move to element and click on it
-        actions = ActionChains(self.driver)
-        self.driver.execute_script("arguments[0].scrollIntoView();", player)
-        actions.move_to_element(player).click().perform()
+        self.driver.execute_script("arguments[0].scrollIntoView(); arguments[0].click();", player)
         # Parse the day page's code
         soup = self.get_soup()
         table = soup.find(**self.get_find_args('stats_table'))
