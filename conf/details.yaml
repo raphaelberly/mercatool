@@ -66,6 +66,9 @@ mappings:
     Forward: A
   clean_sheet:
     NaN: 1/2
+  team:
+    "Reims ": "Reims"
+    "Saint-Étienne": "Saint Etienne"
 
 transformations:
   clean_sheet: lib.transformations.fraction_to_float
