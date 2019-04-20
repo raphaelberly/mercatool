@@ -32,9 +32,9 @@ To get the scraper to run, you will need to have:
 the driver configuration file (`conf/driver.yaml` per default). Such an image can be pulled from 
 [here](https://hub.docker.com/u/selenium), or built using 
 [this](https://github.com/DeinChristian/rpi-docker-selenium) for armhf (Armv7) based devices.
-- A postgres database with two tables, which creation SQL queries can be found in the `lld` folder 
+- A postgres database with two tables, which creation SQL queries can be found in the `ddl` folder 
 (`details.sql` and `ratings.sql`). The names must be matching those in the configuration file 
-`conf/driver.yaml`
+`conf/details.yaml` or `conf/ratings.yaml`
 - A credentials file `conf/credentials.yaml` following the format described in 
 `conf/credentials_format.yaml` 
 
