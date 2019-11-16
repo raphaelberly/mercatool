@@ -27,12 +27,15 @@ features:
   Total: raw_grade
 
 classes:
-  home_team_name:
-    key: index__homeTeamClubName___21dga
+  home_team_jersey:
+    key: index__homeTeamJersey___1Dp8h
     tag: div
-  away_team_name:
-    key: index__awayTeamClubName___2U5C2
+  away_team_jersey:
+    key: index__awayTeamJersey___2PlEx
     tag: div
+  team_name:
+    key: team-jersey
+    tag: img
   stadium:
     key: index__pitchVertical___1svKR
     tag: div
@@ -49,7 +52,7 @@ classes:
     key: rate
     tag: span
   games:
-    key: index__match___2as0X
+    key: index__block___1-Nq1
     tag: div
   game_score:
     key: index__root___12BYS

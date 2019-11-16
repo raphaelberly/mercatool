@@ -190,7 +190,10 @@ class DetailScraper(Scraper):
             # Repeat process for home and away team
             for loc in ['home', 'away']:
                 # Get team name
-                team_name = soup.find(**self.get_find_args(f'{loc}_team_name')).text
+                team_jersey = soup.find(**self.get_find_args(f'{loc}_team_jersey'))
+                if not team_jersey:
+                    print(url)
+                team_name = team_jersey.find(**self.get_find_args('team_name'))['alt']
                 # Get the team players
                 stadium = self.driver.find_element_by_class_name(self.classes['stadium']['key'])
                 players = stadium \
@@ -199,7 +202,8 @@ class DetailScraper(Scraper):
                     .find_elements_by_class_name(self.classes['player']['key'])
                 # Get the team opponents
                 opponent_loc = 'home' if loc == 'away' else 'away'
-                opponent_name = soup.find(**self.get_find_args(f'{opponent_loc}_team_name')).text
+                opponent_jersey = soup.find(**self.get_find_args(f'{opponent_loc}_team_jersey'))
+                opponent_name = opponent_jersey.find(**self.get_find_args('team_name'))['alt']
                 # Iterate over all players of the team
                 for player in players:
                     try:
