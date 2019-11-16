@@ -24,6 +24,7 @@ class BasicScraper(object):
     # GET A WEBPAGE
     def get_page(self, url):
         self.driver.get(url)
+        sleep(2)
 
     # GET SOUP FROM CURRENT WEBPAGE
     def get_soup(self):
@@ -65,7 +66,7 @@ class Scraper(BasicScraper):
         password.send_keys(self.credentials['mpg']['password'])
         username.send_keys(self.credentials['mpg']['username'])
         password.submit()
-        sleep(2)
+        sleep(4)
 
     def _apply_maps(self, dict_item):
         if not self.mappings:
