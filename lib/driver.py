@@ -16,6 +16,10 @@ SLEEPING_TIME = 1
 def _get_options(lang, *args):
 
     chrome_options = Options()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-extensions')
+    chrome_options.add_argument('--disable-dev-shm-usage')
     chrome_options.add_argument(f'--lang={lang}')
     chrome_options.add_experimental_option('prefs', {'intl.accept_languages': lang})
     for arg in args:
